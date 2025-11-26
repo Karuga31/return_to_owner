@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import api from "../services/api";
 
-export default function ItemForm({ onSuccess }) {
+export default function ItemForm({ onSuccess, userRole }) {
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
   const [name, setName] = useState("");
@@ -9,9 +9,12 @@ export default function ItemForm({ onSuccess }) {
   const submit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
+    const rolesToHideFrom = ['admin', 'super_admin'];
     formData.append("description", description);
     if (name) formData.append("name", name);
     if (image) formData.append("image", image);
+    if (userRole && rolesToHideFrom.includes(userRole.toLowerCase())) {
+    return null; }
 
     try {
       await api.post("/report", formData, { headers: { "Content-Type": "multipart/form-data" }});

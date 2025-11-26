@@ -10,37 +10,42 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import GuardDashboard from "./pages/GuardDashboard";
+// GuardDashboard import removed
 import ProtectedRoute from "./components/protectedroute";
 
 export default function App() {
-  return (
-    <AuthProvider>
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="container py-8 flex-1">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+  return (
+    <AuthProvider>
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="container py-8 flex-1">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-            <Route path="/dashboard" element={
-              <ProtectedRoute><Dashboard /></ProtectedRoute>
-            } />
+            {/* 1. Standard User Route (default authenticated dashboard) */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute><Dashboard /></ProtectedRoute>
+            } />
 
-            <Route path="/admin" element={
-              <ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>
-            } />
+            {/* 2. Admin User Route (specifically restricted to 'admin') */}
+            <Route path="/admin" element={
+              <ProtectedRoute allowedRoles={["admin", "super_admin"]}><AdminDashboard /></ProtectedRoute>
+            } />
 
-            <Route path="/guard" element={
-              <ProtectedRoute allowedRoles={["guard"]}><GuardDashboard /></ProtectedRoute>
-            } />
+            {/* 3. Guard Dashboard Route removed */}
+            {/* The following line has been removed:
+            <Route path="/guard" element={
+              <ProtectedRoute allowedRoles={["guard"]}><GuardDashboard /></ProtectedRoute>
+            } />
+            */}
 
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </AuthProvider>
-  );
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </AuthProvider>
+  );
 }
