@@ -10,6 +10,89 @@ items_bp = Blueprint("items", __name__)
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "datasets", "images")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# -------------------------------------------------------------------
+# Get all items (public route)
+# -------------------------------------------------------------------
+@items_bp.route("/api/items", methods=["GET", "OPTIONS"])
+def get_items():
+    items = LostItem.query.all()
+    result = [
+        {
+            "id": item.id,
+            "name": item.name,
+            "description": item.description,
+            "image_url": item.image_url,
+            "recovered": item.recovered,
+            "reported_by": item.reported_by
+        }
+        for item in items
+    ]
+    return jsonify(result), 200
+
+# -------------------------------------------------------------------
+# Student: Report lost item with image recognition and NLP
+# -------------------------------------------------------------------
+from PIL import Image
+import torch
+from transformers import pipeline
+
+@items_bp.route("/api/report", methods=["POST"])
+@require_auth
+def report_lost_item():
+    # Get form data
+    description = request.form.get("description")
+    name = request.form.get("name")
+    image = request.files.get("image")
+    user_id = getattr(request, "user", None)
+    if user_id:
+        user_id = user_id.get("id")
+
+    # Save image
+    image_url = None
+    if image:
+        image_path = os.path.join(UPLOAD_FOLDER, image.filename)
+        image.save(image_path)
+        image_url = f"datasets/images/{image.filename}"
+
+    # --- Image Recognition (Demo: use HuggingFace zero-shot-image-classification) ---
+    image_labels = []
+    try:
+        classifier = pipeline("zero-shot-image-classification", model="openai/clip-vit-base-patch16")
+        pil_img = Image.open(image_path)
+        candidate_labels = ["laptop", "wallet", "book", "keychain", "phone", "bag", "ID card"]
+        result = classifier(pil_img, candidate_labels)
+        image_labels = [r["label"] for r in result if r["score"] > 0.2]
+    except Exception as e:
+        print(f"Image recognition error: {e}")
+
+    # --- NLP (Demo: keyword extraction using transformers pipeline) ---
+    nlp_keywords = []
+    try:
+        nlp = pipeline("feature-extraction", model="distilbert-base-uncased")
+        # For demo, just split description into keywords
+        nlp_keywords = description.split()
+    except Exception as e:
+        print(f"NLP error: {e}")
+
+    # Store in DB
+    item = LostItem(
+        name=name or (image_labels[0] if image_labels else "Unknown"),
+        description=description,
+        image_url=image_url,
+        category=", ".join(image_labels),
+        reported_by=user_id,
+        status="lost"
+    )
+    db.session.add(item)
+    db.session.commit()
+
+    return jsonify({
+        "message": "Report submitted",
+        "item_id": item.id,
+        "image_labels": image_labels,
+        "nlp_keywords": nlp_keywords
+    }), 201
+
 
 # -------------------------------------------------------------------
 # Mark recovered (user + admin)
@@ -23,6 +106,7 @@ def mark_recovered(item_id):
         return jsonify({"error": "Not found"}), 404
 
     item.recovered = True
+    item.status = "found"
     db.session.commit()
     return jsonify({"message": "Marked recovered"}), 200
 

@@ -90,7 +90,7 @@ def require_auth(f):
     def decorated(*args, **kwargs):
         token = get_token_from_header()
         if not token:
-            return jsonify({"error": "Missing Authorization token"}), 401
+            return jsonify({"error": "Authentication required"}), 401
 
         try:
             payload = jwt.decode(
@@ -98,21 +98,17 @@ def require_auth(f):
                 current_app.config["SECRET_KEY"],
                 algorithms=["HS256"]
             )
-
-            user = User.query.get(payload.get("id"))
+            user = User.query.get(payload.get("user_id"))
             if not user:
-                return jsonify({"error": "User not found"}), 404
-
+                return jsonify({"error": "User not found"}), 401
             request.user = {
                 "id": user.id,
                 "email": user.email,
                 "role": user.role
             }
-
         except Exception as e:
             print("JWT decode error:", e)
             return jsonify({"error": "Invalid or expired token"}), 401
-
         return f(*args, **kwargs)
     return decorated
 
@@ -134,16 +130,12 @@ def require_role(*allowed_roles):
             user = getattr(request, "user", None)
 
             if not user:
-                return jsonify({"error": "Unauthorized"}), 401
+                return jsonify({"error": "Authentication required"}), 401
 
             user_role = user.get("role")
 
             if user_role not in allowed_roles:
-                return jsonify({
-                    "error": "Forbidden — Insufficient role",
-                    "your_role": user_role,
-                    "allowed_roles": allowed_roles
-                }), 403
+                return jsonify({"error": "Permission denied", "your_role": user_role, "allowed_roles": allowed_roles}), 403
 
             return f(*args, **kwargs)
 

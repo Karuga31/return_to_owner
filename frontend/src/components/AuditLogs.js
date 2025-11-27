@@ -22,7 +22,12 @@ export default function AuditLogs() {
       }
       if (!response.ok) throw new Error('Failed to fetch audit logs.');
 
-      const logData = await response.json();
+      let logData;
+      try {
+        logData = await response.json();
+      } catch (e) {
+        throw new Error('Invalid JSON response. Backend may have returned HTML or an error page.');
+      }
       setLogs(logData);
     } catch (err) {
       setError(err.message || 'An error occurred.');

@@ -65,18 +65,21 @@ def register():
     email = data.get("email")
     password = data.get("password")
     role = data.get("role", "student")
-    
+
     # NOTE: You must restrict who can register admin/moderator roles in a real application!
-    
+
     if not username or not password:
         return jsonify({"error": "Missing username or password"}), 400
 
     if User.query.filter_by(username=username).first():
         return jsonify({"error": "User exists"}), 409
 
-    user = User(username=username, role=role, password_hash=generate_password_hash(password))
+    # Always use pbkdf2:sha256 for password hashing
+    password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+    user = User(username=username, email=email, role=role, password_hash=password_hash)
     db.session.add(user)
     db.session.commit()
+    print(f"Registered user {username} with hash {password_hash}")
     return jsonify({"message": "Registered"}), 201
 
 

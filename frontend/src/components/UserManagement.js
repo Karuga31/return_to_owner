@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function UserManagement() {
+export default function UserManagement({ setUserCount }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,9 +37,15 @@ export default function UserManagement() {
         throw new Error('Failed to fetch user list.');
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        throw new Error('Invalid JSON response. Backend may have returned HTML or an error page.');
+      }
       setUsers(data);
       setError(null);
+      if (setUserCount) setUserCount(Array.isArray(data) ? data.length : 0);
 
     } catch (err) {
       setError(err.message || 'An error occurred while fetching users.');

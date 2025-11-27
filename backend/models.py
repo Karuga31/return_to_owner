@@ -6,6 +6,7 @@ class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)
     role = db.Column(db.String(20), nullable=False)  # e.g., "student", "staff", "guard", "admin"
     password_hash = db.Column(db.String(128), nullable=False)
 
@@ -29,4 +30,6 @@ class LostItem(db.Model):
     recovered_date = db.Column(db.DateTime, nullable=True)
 
     guard_verified = db.Column(db.Boolean, default=False)
+
+    status = db.Column(db.String(20), default="pending")  # Add status field for item approval
 

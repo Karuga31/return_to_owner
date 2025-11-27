@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 // import ItemForm from './ItemForm'; 
 
 export default function ItemReview({ userRole }) {
-  const [submissions, setSubmissions] = useState([]);
+    const [submissions, setSubmissions] = useState([]);
+    const [lostSubmissions, setLostSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -21,29 +22,35 @@ export default function ItemReview({ userRole }) {
   
   // --- Define fetchSubmissions using useCallback for dependency stability ---
   // Define it *before* useEffect and *inside* the component function.
-  const fetchSubmissions = useCallback(async () => {
-    const token = getToken();
-    if (!token) return setError("Not authenticated.");
+    const fetchSubmissions = useCallback(async () => {
+        const token = getToken();
+        if (!token) return setError("Not authenticated.");
 
-    try {
-      const response = await fetch('/api/admin/submissions', {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+        try {
+            const response = await fetch('/api/admin/submissions', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
 
-      if (response.status === 403) {
-         throw new Error("Permission Denied: Requires Moderator or Admin role.");
-      }
-      if (!response.ok) throw new Error('Failed to fetch submissions.');
+            if (response.status === 403) {
+                 throw new Error("Permission Denied: Requires Moderator or Admin role.");
+            }
+            if (!response.ok) throw new Error('Failed to fetch submissions.');
 
-      const data = await response.json();
-      setSubmissions(data);
-    } catch (err) {
-      setError(err.message || 'An error occurred.');
-    } finally {
-      setLoading(false);
-    }
-  }, []); // Empty dependency array because getToken is stable and not a state/prop
+            let data;
+            try {
+                data = await response.json();
+            } catch (e) {
+                throw new Error('Invalid JSON response. Backend may have returned HTML or an error page.');
+            }
+            setSubmissions(data);
+            setLostSubmissions(data.filter(item => item.status === "lost"));
+        } catch (err) {
+            setError(err.message || 'An error occurred.');
+        } finally {
+            setLoading(false);
+        }
+    }, []); // Empty dependency array because getToken is stable and not a state/prop
 
   // --- Action Handler (Ensure this is also defined before it's used) ---
   const handleAction = async (itemId, action) => {
@@ -83,23 +90,24 @@ export default function ItemReview({ userRole }) {
   if (loading) return <p>Loading review queue...</p>;
   if (error) return <p className="text-red-600 font-semibold">Error: {error}</p>;
 
-  return (
-    // ... (rest of the JSX remains the same) ...
-    <div className="p-4">
-        {!isModeratorOrAdmin && ReportItemForm} 
-
-      <h3 className="text-xl font-semibold mb-4">📝 Item Review & Claim Verification</h3>
-      
-      {submissions.map(item => (
-        <div key={item.id} className="border p-3 mb-2 flex justify-between items-center">
-          <span>{item.name} - Status: **{item.status}**</span>
-          <div>
-            <button onClick={() => handleAction(item.id, 'approved')} className="bg-green-500 text-white p-1 text-sm mr-2">Approve Item (Found)</button>
-            <button onClick={() => handleAction(item.id, 'pending')} className="bg-yellow-500 text-white p-1 text-sm mr-2">Set Pending Review</button>
-            <button onClick={() => handleAction(item.id, 'rejected')} className="bg-red-500 text-white p-1 text-sm">Reject Item</button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+    return (
+        <div className="p-4">
+            {!isModeratorOrAdmin && ReportItemForm}
+            <h3 className="text-xl font-semibold mb-4">📝 Item Review & Claim Verification</h3>
+            {lostSubmissions.length === 0 ? (
+                <p className="text-gray-500">No lost items to review.</p>
+            ) : (
+                lostSubmissions.map(item => (
+                    <div key={item.id} className="border p-3 mb-2 flex justify-between items-center">
+                        <span>{item.name} - Status: <b>{item.status}</b></span>
+                        <div>
+                            <button onClick={() => handleAction(item.id, 'found')} className="bg-green-500 text-white p-1 text-sm mr-2">Mark as Found</button>
+                            <button onClick={() => handleAction(item.id, 'pending')} className="bg-yellow-500 text-white p-1 text-sm mr-2">Set Pending Review</button>
+                            <button onClick={() => handleAction(item.id, 'rejected')} className="bg-red-500 text-white p-1 text-sm">Reject Item</button>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+    );
 }

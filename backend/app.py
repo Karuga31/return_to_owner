@@ -3,6 +3,7 @@ import pandas as pd
 from flask import Flask, app
 from flask_cors import CORS
 from backend.models import db
+from flask_migrate import Migrate
 from backend.routes_auth import auth_bp
 from backend.routes_items import items_bp
 from backend.admin_routes import admin_bp
@@ -45,7 +46,7 @@ except Exception as e:
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv('DATABASE_URL', 'mysql://root:@localhost/return_to_owner')
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False # This is good
@@ -57,6 +58,7 @@ def create_app():
     app.config['MAIL_PASSWORD'] = ""     # YOUR APP PASSWORD
 
     db.init_app(app)
+    migrate = Migrate(app, db)
 
     # Register blueprints
     app.register_blueprint(auth_bp)

@@ -22,7 +22,12 @@ export default function Analytics() {
       }
       if (!response.ok) throw new Error('Failed to fetch analytics.');
 
-      const analyticsData = await response.json();
+      let analyticsData;
+      try {
+        analyticsData = await response.json();
+      } catch (e) {
+        throw new Error('Invalid JSON response. Backend may have returned HTML or an error page.');
+      }
       setData(analyticsData);
 
     } catch (err) {
